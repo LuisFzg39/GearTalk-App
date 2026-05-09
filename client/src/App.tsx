@@ -5,7 +5,7 @@ import RegisterPage from './pages/shared/RegisterPage';
 import DashboardPage from './pages/manager/DashboardPage';
 import TaskDetailPage from './pages/manager/TaskDetailPage';
 import MyTasksPage from './pages/specialist/MyTasksPage';
-import TaskChatPage from './pages/specialist/TaskChatPage';
+import TaskChatPage from './pages/shared/TaskChatPage';
 
 function App() {
   return (
@@ -23,6 +23,7 @@ function App() {
       >
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="tasks/:id" element={<TaskDetailPage />} />
+        <Route path="tasks/:id/chat" element={<TaskChatPage />} />
       </Route>
       <Route
         path="/specialist"

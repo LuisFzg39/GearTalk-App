@@ -146,6 +146,23 @@ const TaskDetailPage = () => {
 
             <div className="border-t border-gray-200 pt-4">
               <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">
+                Conversation
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate(`/manager/tasks/${task.id}/chat`)}
+                disabled={!task.specialist_id}
+                className="w-full sm:w-auto min-h-[2.75rem] rounded-xl bg-indigo-600 text-white font-semibold px-5 py-2.5 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+              >
+                Open chat with specialist
+              </button>
+              {!task.specialist_id && (
+                <p className="mt-2 text-xs text-gray-500">Assign a specialist to exchange messages.</p>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 pt-4">
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">
                 Update status
               </p>
 
