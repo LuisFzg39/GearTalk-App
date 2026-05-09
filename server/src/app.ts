@@ -5,6 +5,7 @@ import { errorMiddleware } from './middlewares/error.middleware';
 import authRouter from './features/auth/auth.router';
 import tasksRouter from './features/tasks/tasks.router';
 import translationRouter from './features/translation/translation.router';
+import messagesRouter from './features/messages/messages.router';
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.get('/', (_req, res) => {
       auth: '/api/auth',
       tasks: '/api/tasks',
       translation: '/api/translation',
+      messages: '/api/messages',
     },
     client: CLIENT_URL,
   });
@@ -36,7 +38,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/translation', translationRouter);
-// TODO Person 2: mount messages router here
+app.use('/api/messages', messagesRouter);
 
 app.use(errorMiddleware);
 
