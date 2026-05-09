@@ -1,5 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
-// TODO Person 1: handle errors globally and send consistent error responses
-export const errorMiddleware = (err: Error, req: Request, res: Response, next: NextFunction): void => {
-  // TODO
+
+interface HttpError extends Error {
+  status?: number;
+}
+
+export const errorMiddleware = (
+  err: HttpError,
+  _req: Request,
+  res: Response,
+  _next: NextFunction
+): void => {
+  console.error(err);
+  const status = typeof err.status === 'number' ? err.status : 500;
+  res.status(status).json({
+    message: err.message || 'Internal Server Error',
+    status,
+  });
 };

@@ -2,6 +2,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import { AxiosProvider } from './providers/AxiosProvider';
+import { AuthProvider } from './providers/AuthProvider';
 import 'tailwindcss/base.css';
 
 const rootElement = document.getElementById('root');
@@ -12,8 +14,17 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
+      <AxiosProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </AxiosProvider>
     </BrowserRouter>
   </StrictMode>
 );

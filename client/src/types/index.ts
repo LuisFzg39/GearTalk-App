@@ -9,10 +9,10 @@ export interface User {
 export interface Task {
   id: string;
   instruction_original: string;
-  instruction_translated: string;
+  instruction_translated: string | null;
   status: 'pending' | 'active' | 'alert' | 'done';
   manager_id: string;
-  specialist_id: string;
+  specialist_id: string | null;
   created_at: string;
 }
 

@@ -1,4 +1,9 @@
 import { Router } from 'express';
+import * as authController from './auth.controller';
+
 const router = Router();
-// TODO Person 1: define POST /register and POST /login routes
+
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+
 export default router;

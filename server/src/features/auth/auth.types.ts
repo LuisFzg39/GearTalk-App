@@ -1,3 +1,18 @@
-// TODO Person 1: define auth-specific request/response types
-export interface LoginRequest {}
-export interface RegisterRequest {}
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: 'manager' | 'specialist';
+  preferred_language?: string;
+}
+
+export interface AuthPayload {
+  id: string;
+  email: string;
+  role: 'manager' | 'specialist';
+}

@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { PORT, CLIENT_URL } from './config';
 import { errorMiddleware } from './middlewares/error.middleware';
+import authRouter from './features/auth/auth.router';
+import tasksRouter from './features/tasks/tasks.router';
 
 const app = express();
 
@@ -13,12 +15,24 @@ app.use(
 );
 app.use(express.json());
 
+app.get('/', (_req, res) => {
+  res.json({
+    name: 'GearTalk API',
+    health: '/api/health',
+    routes: {
+      auth: '/api/auth',
+      tasks: '/api/tasks',
+    },
+    client: CLIENT_URL,
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-// TODO Person 1: mount auth router here
-// TODO Person 1: mount tasks router here
+app.use('/api/auth', authRouter);
+app.use('/api/tasks', tasksRouter);
 // TODO Person 2: mount messages router here
 // TODO Person 2: mount translation router here
 
