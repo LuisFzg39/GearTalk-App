@@ -1,4 +1,5 @@
 import { pool } from '../../config';
+import * as translationService from '../translation/translation.service';
 import { CreateTaskRequest, Task, TaskStatus, TaskWithUsers } from './tasks.types';
 
 export const createTask = async (
@@ -7,8 +8,16 @@ export const createTask = async (
 ): Promise<Task> => {
   const { instruction_original, specialist_id } = data;
 
-  // TODO Person 2: call translationService here before insert
-  const instruction_translated: string | null = null;
+  const [managerLang, specialistLang] = await Promise.all([
+    translationService.getPreferredLanguage(managerId),
+    translationService.getPreferredLanguage(specialist_id),
+  ]);
+
+  const instruction_translated = await translationService.translateText(
+    instruction_original,
+    managerLang,
+    specialistLang
+  );
 
   const result = await pool.query<{ task: Task }>(
     `INSERT INTO tasks (
