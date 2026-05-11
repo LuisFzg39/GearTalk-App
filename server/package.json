@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "ts-node-dev --tree-kill src/app.ts",
-    "build": "tsc"
+    "build": "node ./node_modules/typescript/bin/tsc"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

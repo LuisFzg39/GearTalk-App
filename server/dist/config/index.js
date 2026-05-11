@@ -21,6 +21,12 @@ if (Number.isNaN(exports.PORT)) {
 exports.JWT_SECRET = process.env.JWT_SECRET;
 exports.DEEPL_API_KEY = process.env.DEEPL_API_KEY;
 exports.CLIENT_URL = process.env.CLIENT_URL;
-exports.pool = new pg_1.Pool({
-    connectionString: process.env.DATABASE_URL,
-});
+function createPoolConfig() {
+    const connectionString = process.env.DATABASE_URL;
+    const needsSsl = /supabase\.co/i.test(connectionString) || /sslmode=require/i.test(connectionString);
+    return {
+        connectionString,
+        ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+    };
+}
+exports.pool = new pg_1.Pool(createPoolConfig());

@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const auth_middleware_1 = require("../../middlewares/auth.middleware");
+const messages_controller_1 = require("./messages.controller");
 const router = (0, express_1.Router)();
-// TODO Person 2: define message routes
+router.use(auth_middleware_1.authMiddleware);
+router.get('/tasks/:taskId/messages', messages_controller_1.messagesController.listForTask);
+router.post('/tasks/:taskId/messages', messages_controller_1.messagesController.createForTask);
 exports.default = router;

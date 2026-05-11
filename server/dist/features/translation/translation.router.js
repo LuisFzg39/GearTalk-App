@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const auth_middleware_1 = require("../../middlewares/auth.middleware");
+const translation_controller_1 = require("./translation.controller");
 const router = (0, express_1.Router)();
-// TODO Person 2: define translation routes
+router.post('/ui-bundle', auth_middleware_1.optionalAuthMiddleware, translation_controller_1.translationController.bundleUi);
+router.use(auth_middleware_1.authMiddleware);
+router.post('/translate', translation_controller_1.translationController.translate);
 exports.default = router;
