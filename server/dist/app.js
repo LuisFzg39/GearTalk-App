@@ -40,6 +40,4 @@ app.use('/api/tasks', tasks_router_1.default);
 app.use('/api/translation', translation_router_1.default);
 app.use('/api/messages', messages_router_1.default);
 app.use(error_middleware_1.errorMiddleware);
-app.listen(config_1.PORT, () => {
-    console.log(`Server listening on http://localhost:${config_1.PORT}`);
-});
+exports.default = app;

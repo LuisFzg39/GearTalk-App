@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { PORT, CLIENT_URL } from './config';
+import { CLIENT_URL } from './config';
 import { errorMiddleware } from './middlewares/error.middleware';
 import authRouter from './features/auth/auth.router';
 import tasksRouter from './features/tasks/tasks.router';
@@ -42,8 +42,5 @@ app.use('/api/messages', messagesRouter);
 
 app.use(errorMiddleware);
 
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
-
+export default app;
 export { app };
