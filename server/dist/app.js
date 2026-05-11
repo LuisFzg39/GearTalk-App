@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.app = void 0;
 const express_1 = __importDefault(require("express"));
-const cors_1 = __importDefault(require("cors"));
 const config_1 = require("./config");
 const error_middleware_1 = require("./middlewares/error.middleware");
 const auth_router_1 = __importDefault(require("./features/auth/auth.router"));
@@ -14,10 +13,45 @@ const translation_router_1 = __importDefault(require("./features/translation/tra
 const messages_router_1 = __importDefault(require("./features/messages/messages.router"));
 const app = (0, express_1.default)();
 exports.app = app;
-app.use((0, cors_1.default)({
-    origin: config_1.CLIENT_URL || true,
-    credentials: true,
-}));
+const normalizeOrigin = (value) => {
+    const trimmed = value.trim().replace(/\/+$/, '');
+    if (!trimmed)
+        return '';
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
+const configuredOrigins = config_1.CLIENT_URL.split(',')
+    .map(normalizeOrigin)
+    .filter(Boolean);
+const isAllowedVercelPreview = (origin) => {
+    try {
+        const { hostname, protocol } = new URL(origin);
+        return protocol === 'https:' && hostname.endsWith('.vercel.app');
+    }
+    catch {
+        return false;
+    }
+};
+const isAllowedOrigin = (origin) => {
+    const normalizedOrigin = normalizeOrigin(origin);
+    return (configuredOrigins.length === 0 ||
+        configuredOrigins.includes(normalizedOrigin) ||
+        isAllowedVercelPreview(normalizedOrigin));
+};
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (typeof origin === 'string' && isAllowedOrigin(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', normalizeOrigin(origin));
+        res.setHeader('Vary', 'Origin');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Headers', req.headers['access-control-request-headers'] ?? 'Content-Type, Authorization');
+        res.setHeader('Access-Control-Allow-Methods', req.headers['access-control-request-method'] ?? 'GET,POST,PATCH,OPTIONS');
+    }
+    if (req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+    }
+    next();
+});
 app.use(express_1.default.json());
 app.get('/', (_req, res) => {
     res.json({
