@@ -4,9 +4,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authService = exports.login = exports.register = void 0;
-const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const config_1 = require("../../config");
+// `bcryptjs` is pure JavaScript, so it works reliably in Vercel serverless.
+// Native `bcrypt` can ship the wrong platform binary and crash with `invalid ELF header`.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const bcrypt = require('bcryptjs');
 const httpError = (message, status) => {
     const err = new Error(message);
     err.status = status;
@@ -26,7 +29,7 @@ const register = async (data) => {
     if (existing.rows[0]?.exists) {
         httpError('Email already in use', 409);
     }
-    const password_hash = await bcrypt_1.default.hash(password, BCRYPT_ROUNDS);
+    const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const inserted = await config_1.pool.query(`INSERT INTO users (name, email, password_hash, role, preferred_language)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING json_build_object(
@@ -50,7 +53,7 @@ const login = async (data) => {
     if (!row) {
         httpError('Invalid credentials', 401);
     }
-    const matches = await bcrypt_1.default.compare(password, row.password_hash);
+    const matches = await bcrypt.compare(password, row.password_hash);
     if (!matches) {
         httpError('Invalid credentials', 401);
     }

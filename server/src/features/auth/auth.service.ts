@@ -1,7 +1,16 @@
-import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET, pool } from '../../config';
 import { AuthPayload, LoginRequest, RegisterRequest } from './auth.types';
+
+type PasswordHasher = {
+  hash: (password: string, saltOrRounds: number) => Promise<string>;
+  compare: (password: string, hash: string) => Promise<boolean>;
+};
+
+// `bcryptjs` is pure JavaScript, so it works reliably in Vercel serverless.
+// Native `bcrypt` can ship the wrong platform binary and crash with `invalid ELF header`.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const bcrypt = require('bcryptjs') as PasswordHasher;
 
 type HttpStatusError = Error & { status: number };
 
