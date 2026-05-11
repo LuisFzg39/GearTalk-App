@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useLocation } from 'react-router-dom';
 import { User } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { api } from './AxiosProvider';
@@ -75,6 +76,8 @@ const I18nBootScreen = () => (
 
 export const I18nProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
+  const location = useLocation();
+  const isPublicAuthRoute = location.pathname === '/login' || location.pathname === '/register';
   const initial = initialI18nState(user);
   const [strings, setStrings] = useState<Record<string, string>>(initial.strings);
   const [ready, setReady] = useState(initial.ready);
@@ -82,7 +85,7 @@ export const I18nProvider = ({ children }: { children: ReactNode }) => {
   const lang = resolveLangCode(user);
 
   useEffect(() => {
-    if (!user) {
+    if (isPublicAuthRoute || !user) {
       setStrings(UI_STRINGS_EN);
       setReady(true);
       return;
@@ -124,9 +127,9 @@ export const I18nProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, user?.preferred_language, lang]);
+  }, [isPublicAuthRoute, user?.id, user?.preferred_language, lang]);
 
-  const activeStrings = user ? strings : UI_STRINGS_EN;
+  const activeStrings = user && !isPublicAuthRoute ? strings : UI_STRINGS_EN;
 
   const t = useCallback(
     (key: string) => activeStrings[key] ?? UI_STRINGS_EN[key] ?? key,
@@ -140,7 +143,7 @@ export const I18nProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <I18nContext.Provider value={value}>
-      {user && !ready ? <I18nBootScreen /> : children}
+      {user && !isPublicAuthRoute && !ready ? <I18nBootScreen /> : children}
     </I18nContext.Provider>
   );
 };
