@@ -14,7 +14,12 @@ const httpError = (message, status) => {
 };
 const BCRYPT_ROUNDS = 10;
 const JWT_EXPIRES_IN = '7d';
-const signToken = (payload) => jsonwebtoken_1.default.sign(payload, config_1.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+const signToken = (payload) => {
+    if (!config_1.JWT_SECRET) {
+        httpError('Server is missing JWT_SECRET', 500);
+    }
+    return jsonwebtoken_1.default.sign(payload, config_1.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+};
 const register = async (data) => {
     const { name, email, password, role, preferred_language } = data;
     const existing = await config_1.pool.query('SELECT EXISTS(SELECT 1 FROM users WHERE email = $1) AS exists', [email]);

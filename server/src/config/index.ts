@@ -5,11 +5,10 @@ dotenv.config();
 
 const requiredEnv = ['DATABASE_URL', 'JWT_SECRET', 'DEEPL_API_KEY', 'CLIENT_URL'] as const;
 
-for (const key of requiredEnv) {
-  const value = process.env[key];
-  if (value === undefined || value === '') {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
+export const missingEnv = requiredEnv.filter((key) => !process.env[key]);
+
+if (missingEnv.length > 0) {
+  console.error(`Missing required environment variables: ${missingEnv.join(', ')}`);
 }
 
 export const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
@@ -18,12 +17,11 @@ if (Number.isNaN(PORT)) {
   throw new Error('PORT must be a valid number');
 }
 
-export const JWT_SECRET = process.env.JWT_SECRET as string;
-export const DEEPL_API_KEY = process.env.DEEPL_API_KEY as string;
-export const CLIENT_URL = process.env.CLIENT_URL as string;
+export const JWT_SECRET = process.env.JWT_SECRET ?? '';
+export const DEEPL_API_KEY = process.env.DEEPL_API_KEY ?? '';
+export const CLIENT_URL = process.env.CLIENT_URL ?? '';
 
-function createPoolConfig(): PoolConfig {
-  const connectionString = process.env.DATABASE_URL as string;
+function createPoolConfig(connectionString: string): PoolConfig {
   const needsSsl =
     /supabase\.co/i.test(connectionString) || /sslmode=require/i.test(connectionString);
   return {
@@ -32,4 +30,21 @@ function createPoolConfig(): PoolConfig {
   };
 }
 
-export const pool = new Pool(createPoolConfig());
+function createMissingDatabasePool(): Pool {
+  const error = () => {
+    const err = new Error('Missing required environment variable: DATABASE_URL') as Error & {
+      status?: number;
+    };
+    err.status = 500;
+    throw err;
+  };
+
+  return {
+    query: error,
+    connect: error,
+  } as unknown as Pool;
+}
+
+export const pool = process.env.DATABASE_URL
+  ? new Pool(createPoolConfig(process.env.DATABASE_URL))
+  : createMissingDatabasePool();

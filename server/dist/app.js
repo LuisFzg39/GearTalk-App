@@ -15,7 +15,7 @@ const messages_router_1 = __importDefault(require("./features/messages/messages.
 const app = (0, express_1.default)();
 exports.app = app;
 app.use((0, cors_1.default)({
-    origin: config_1.CLIENT_URL,
+    origin: config_1.CLIENT_URL || true,
     credentials: true,
 }));
 app.use(express_1.default.json());
@@ -33,7 +33,10 @@ app.get('/', (_req, res) => {
     });
 });
 app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok' });
+    res.json({
+        status: config_1.missingEnv.length === 0 ? 'ok' : 'misconfigured',
+        missingEnv: config_1.missingEnv,
+    });
 });
 app.use('/api/auth', auth_router_1.default);
 app.use('/api/tasks', tasks_router_1.default);

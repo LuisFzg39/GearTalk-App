@@ -47,6 +47,11 @@ export const optionalAuthMiddleware = (req: Request, _res: Response, next: NextF
 };
 
 export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+  if (!JWT_SECRET) {
+    res.status(500).json({ message: 'Server is missing JWT_SECRET' });
+    return;
+  }
+
   const header = req.headers.authorization;
 
   if (!header || !header.startsWith('Bearer ')) {

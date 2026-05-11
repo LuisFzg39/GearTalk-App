@@ -27,8 +27,12 @@ interface AuthResponse {
 const BCRYPT_ROUNDS = 10;
 const JWT_EXPIRES_IN = '7d';
 
-const signToken = (payload: AuthPayload): string =>
-  jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+const signToken = (payload: AuthPayload): string => {
+  if (!JWT_SECRET) {
+    httpError('Server is missing JWT_SECRET', 500);
+  }
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+};
 
 export const register = async (data: RegisterRequest): Promise<AuthResponse> => {
   const { name, email, password, role, preferred_language } = data;

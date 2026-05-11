@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { CLIENT_URL } from './config';
+import { CLIENT_URL, missingEnv } from './config';
 import { errorMiddleware } from './middlewares/error.middleware';
 import authRouter from './features/auth/auth.router';
 import tasksRouter from './features/tasks/tasks.router';
@@ -11,7 +11,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: CLIENT_URL,
+    origin: CLIENT_URL || true,
     credentials: true,
   })
 );
@@ -32,7 +32,10 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  res.json({
+    status: missingEnv.length === 0 ? 'ok' : 'misconfigured',
+    missingEnv,
+  });
 });
 
 app.use('/api/auth', authRouter);
