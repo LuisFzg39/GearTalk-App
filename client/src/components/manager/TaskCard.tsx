@@ -6,17 +6,15 @@ interface TaskCardProps {
 }
 
 const STATUS_STYLES: Record<Task['status'], string> = {
-  pending: 'bg-gray-100 text-gray-700',
-  active: 'bg-green-100 text-green-700',
-  alert: 'bg-red-100 text-red-700',
-  done: 'bg-blue-100 text-blue-700',
+  pending: 'bg-amber-100 text-amber-800',
+  active: 'bg-green-100 text-green-800',
+  done: 'bg-blue-100 text-blue-800',
 };
 
 const STATUS_LABEL: Record<Task['status'], string> = {
-  pending: 'Pending',
-  active: 'Active',
-  alert: 'Alert',
-  done: 'Done',
+  pending: 'Pendiente',
+  active: 'Activa',
+  done: 'Completada',
 };
 
 const formatDate = (iso: string): string => {
@@ -49,7 +47,7 @@ export const TaskCard = ({ task, onClick }: TaskCardProps) => {
             WebkitBoxOrient: 'vertical',
           }}
         >
-          {task.instruction_original}
+          {task.title?.trim() || task.instruction_original}
         </p>
         <span
           className={`shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${STATUS_STYLES[task.status]}`}

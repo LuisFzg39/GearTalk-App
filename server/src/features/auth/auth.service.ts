@@ -1,8 +1,15 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { pool } from '../../config';
-import { JWT_SECRET } from '../../config';
+import { JWT_SECRET, pool } from '../../config';
 import { AuthPayload, LoginRequest, RegisterRequest } from './auth.types';
+
+type HttpStatusError = Error & { status: number };
+
+const httpError = (message: string, status: number): never => {
+  const err = new Error(message) as HttpStatusError;
+  err.status = status;
+  throw err;
+};
 
 interface User {
   id: string;
@@ -32,33 +39,23 @@ export const register = async (data: RegisterRequest): Promise<AuthResponse> => 
   );
 
   if (existing.rows[0]?.exists) {
-    throw new Error('Email already in use');
+    httpError('Email already in use', 409);
   }
 
   const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-  const RETURNING_USER = `RETURNING json_build_object(
+  const inserted = await pool.query<{ user: User }>(
+    `INSERT INTO users (name, email, password_hash, role, preferred_language)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING json_build_object(
        'id', id,
        'name', name,
        'email', email,
        'role', role,
        'preferred_language', preferred_language
-     ) AS user`;
-
-  const inserted =
-    preferred_language !== undefined
-      ? await pool.query<{ user: User }>(
-          `INSERT INTO users (name, email, password_hash, role, preferred_language)
-           VALUES ($1, $2, $3, $4, $5)
-           ${RETURNING_USER}`,
-          [name, email, password_hash, role, preferred_language]
-        )
-      : await pool.query<{ user: User }>(
-          `INSERT INTO users (name, email, password_hash, role)
-           VALUES ($1, $2, $3, $4)
-           ${RETURNING_USER}`,
-          [name, email, password_hash, role]
-        );
+     ) AS user`,
+    [name, email, password_hash, role, preferred_language]
+  );
 
   const user = inserted.rows[0].user;
   const token = signToken({ id: user.id, email: user.email, role: user.role });
@@ -85,12 +82,12 @@ export const login = async (data: LoginRequest): Promise<AuthResponse> => {
 
   const row = result.rows[0];
   if (!row) {
-    throw new Error('Invalid credentials');
+    httpError('Invalid credentials', 401);
   }
 
   const matches = await bcrypt.compare(password, row.password_hash);
   if (!matches) {
-    throw new Error('Invalid credentials');
+    httpError('Invalid credentials', 401);
   }
 
   const user: User = {

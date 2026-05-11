@@ -8,7 +8,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   role: 'manager' | 'specialist';
-  preferred_language?: string;
+  preferred_language: string;
 }
 
 export interface AuthPayload {

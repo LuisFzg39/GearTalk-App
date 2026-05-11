@@ -1,6 +1,17 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { AuthLayout } from '../../components/shared/AuthLayout';
+import {
+  authCardClass,
+  authFieldClass,
+  authLabelClass,
+  authLinkClass,
+  authPrimaryBtnClass,
+  authSelectClass,
+} from '../../components/shared/authStyles';
+import { REGISTRATION_LANGUAGES } from '../../constants/languages';
+import { useI18n } from '../../providers/I18nProvider';
 
 const HOME_BY_ROLE: Record<'manager' | 'specialist', string> = {
   manager: '/manager/dashboard',
@@ -9,11 +20,13 @@ const HOME_BY_ROLE: Record<'manager' | 'specialist', string> = {
 
 const RegisterPage = () => {
   const { register } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [preferred_language, setPreferredLanguage] = useState<string>('es');
   const [role, setRole] = useState<'manager' | 'specialist'>('specialist');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -23,12 +36,12 @@ const RegisterPage = () => {
     setError(null);
     setSubmitting(true);
     try {
-      const { user } = await register(name, email, password, role);
+      const { user } = await register(name, email, password, role, preferred_language);
       navigate(HOME_BY_ROLE[user.role], { replace: true });
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Could not create account. Please try again.';
+        t('auth.register.error');
       setError(message);
     } finally {
       setSubmitting(false);
@@ -36,15 +49,24 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white shadow-md rounded-2xl p-8">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-1">Create your account</h1>
-        <p className="text-sm text-gray-500 mb-6">Join GearTalk in a few seconds.</p>
+    <AuthLayout headline={t('auth.register.headline')} tagline={t('auth.register.tagline')}>
+      <section
+        className={`${authCardClass} max-h-[min(100%,calc(100dvh-6rem))] overflow-y-auto lg:max-h-none`}
+      >
+        <div className="mb-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5571DE]">
+            {t('auth.register.badge')}
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.75rem]">
+            {t('auth.register.title')}
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">{t('auth.register.subtitle')}</p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="name">
-              Full name
+            <label className={authLabelClass} htmlFor="name">
+              {t('auth.register.name')}
             </label>
             <input
               id="name"
@@ -52,13 +74,14 @@ const RegisterPage = () => {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t('auth.register.namePlaceholder')}
+              className={authFieldClass}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
-              Email
+            <label className={authLabelClass} htmlFor="email">
+              {t('auth.register.email')}
             </label>
             <input
               id="email"
@@ -67,13 +90,14 @@ const RegisterPage = () => {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="you@company.com"
+              className={authFieldClass}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="password">
-              Password
+            <label className={authLabelClass} htmlFor="password">
+              {t('auth.register.password')}
             </label>
             <input
               id="password"
@@ -83,44 +107,70 @@ const RegisterPage = () => {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={t('auth.register.passwordHint')}
+              className={authFieldClass}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="role">
-              Role
+            <label className={authLabelClass} htmlFor="preferred_language">
+              {t('auth.register.language')}
+            </label>
+            <select
+              id="preferred_language"
+              required
+              value={preferred_language}
+              onChange={(e) => setPreferredLanguage(e.target.value)}
+              className={authSelectClass}
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+              }}
+            >
+              {REGISTRATION_LANGUAGES.map(({ code, label }) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={authLabelClass} htmlFor="role">
+              {t('auth.register.role')}
             </label>
             <select
               id="role"
               value={role}
               onChange={(e) => setRole(e.target.value as 'manager' | 'specialist')}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className={authSelectClass}
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+              }}
             >
-              <option value="specialist">Specialist</option>
-              <option value="manager">Manager</option>
+              <option value="specialist">{t('auth.register.roleSpecialist')}</option>
+              <option value="manager">{t('auth.register.roleManager')}</option>
             </select>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg bg-blue-600 text-white font-medium px-4 py-2 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition"
-          >
-            {submitting ? 'Creating account...' : 'Create account'}
+          <button type="submit" disabled={submitting} className={authPrimaryBtnClass}>
+            {submitting ? t('auth.register.submitting') : t('auth.register.submit')}
           </button>
         </form>
 
-        <p className="text-sm text-gray-600 mt-6 text-center">
-          Already have an account?{' '}
-          <Link to="/login" className="text-blue-600 hover:underline">
-            Sign in
+        <p className="mt-8 text-center text-sm text-slate-500">
+          {t('auth.register.footer')}{' '}
+          <Link to="/login" className={authLinkClass}>
+            {t('auth.register.signIn')}
           </Link>
         </p>
-      </div>
-    </div>
+      </section>
+    </AuthLayout>
   );
 };
 

@@ -4,7 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AxiosProvider } from './providers/AxiosProvider';
 import { AuthProvider } from './providers/AuthProvider';
-import 'tailwindcss/base.css';
+import { I18nProvider } from './providers/I18nProvider';
+import './index.css';
 
 const rootElement = document.getElementById('root');
 
@@ -22,7 +23,9 @@ createRoot(rootElement).render(
     >
       <AxiosProvider>
         <AuthProvider>
-          <App />
+          <I18nProvider>
+            <App />
+          </I18nProvider>
         </AuthProvider>
       </AxiosProvider>
     </BrowserRouter>

@@ -17,6 +17,35 @@ declare global {
   }
 }
 
+/** Attach `req.user` when a valid Bearer token is present; otherwise continue without auth. */
+export const optionalAuthMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
+  const header = req.headers.authorization;
+
+  if (!header || !header.startsWith('Bearer ')) {
+    next();
+    return;
+  }
+
+  const token = header.slice('Bearer '.length).trim();
+
+  if (!token) {
+    next();
+    return;
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as AuthUser & jwt.JwtPayload;
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+    };
+  } catch {
+    /* ignore invalid/expired token */
+  }
+  next();
+};
+
 export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const header = req.headers.authorization;
 

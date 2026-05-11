@@ -100,22 +100,25 @@ export const sendForTask = async (
   const recipientId =
     senderId === parties.manager_id ? parties.specialist_id : parties.manager_id;
 
-  const [senderLang, recipientLang] = await Promise.all([
-    translationService.getPreferredLanguage(senderId),
-    translationService.getPreferredLanguage(recipientId),
-  ]);
+  const senderLang = await translationService.getPreferredLanguage(senderId);
+  const recipientLang = await translationService.getPreferredLanguage(recipientId);
 
-  const translatedText = await translationService.translateText(
-    trimmed,
-    senderLang,
-    recipientLang
-  );
+  let translatedForRecipient = trimmed;
+  try {
+    translatedForRecipient = await translationService.translateText(
+      trimmed,
+      senderLang,
+      recipientLang
+    );
+  } catch {
+    translatedForRecipient = trimmed;
+  }
 
   const result = await pool.query<MessageRowDb>(
     `INSERT INTO messages (task_id, sender_id, original_text, translated_text)
      VALUES ($1, $2, $3, $4)
      RETURNING id, task_id, sender_id, original_text, translated_text, created_at`,
-    [taskId, senderId, trimmed, translatedText]
+    [taskId, senderId, trimmed, translatedForRecipient]
   );
 
   return toRecord(result.rows[0]);

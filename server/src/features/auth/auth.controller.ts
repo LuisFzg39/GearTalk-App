@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import * as authService from './auth.service';
 import { LoginRequest, RegisterRequest } from './auth.types';
+import { isAllowedLanguage } from '../../constants/languages';
 
 const VALID_ROLES = ['manager', 'specialist'] as const;
 
@@ -19,6 +20,14 @@ export const register = async (
 
     if (!VALID_ROLES.includes(role)) {
       res.status(400).json({ message: 'role must be either manager or specialist' });
+      return;
+    }
+
+    if (!preferred_language || typeof preferred_language !== 'string' || !isAllowedLanguage(preferred_language)) {
+      res.status(400).json({
+        message:
+          'preferred_language is required and must be one of: en, zh, hi, es, fr, ar, bn, pt, ru, ja',
+      });
       return;
     }
 

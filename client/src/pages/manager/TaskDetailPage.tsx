@@ -2,27 +2,35 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Task } from '../../types';
 import { api } from '../../providers/AxiosProvider';
+import { ManagerLayout } from '../../components/manager/ManagerLayout';
+import { useI18n } from '../../providers/I18nProvider';
 
 const STATUS_STYLES: Record<Task['status'], string> = {
-  pending: 'bg-gray-100 text-gray-700',
-  active: 'bg-green-100 text-green-700',
-  alert: 'bg-red-100 text-red-700',
-  done: 'bg-blue-100 text-blue-700',
+  pending: 'bg-amber-100 text-amber-900',
+  active: 'bg-green-100 text-green-800',
+  done: 'bg-blue-100 text-blue-900',
 };
 
+/** Pool tasks: no transitions until a specialist accepts */
 const NEXT_STATES: Record<Task['status'], Task['status'][]> = {
-  pending: ['active'],
-  active: ['alert', 'done'],
-  alert: ['active', 'done'],
+  pending: [],
+  active: ['done'],
   done: [],
 };
 
 const STATUS_BUTTON_STYLES: Record<Task['status'], string> = {
   pending: 'bg-gray-600 hover:bg-gray-700 text-white',
   active: 'bg-green-600 hover:bg-green-700 text-white',
-  alert: 'bg-red-600 hover:bg-red-700 text-white',
   done: 'bg-blue-600 hover:bg-blue-700 text-white',
 };
+
+function transitionLabel(
+  status: Task['status'],
+  t: (key: string) => string
+): string {
+  if (status === 'done') return t('task.detail.transition.done');
+  return `${t('task.detail.transition.generic')} ${t(`task.status.${status}`)}`;
+}
 
 interface TaskWithSpecialist extends Task {
   specialist_name?: string;
@@ -31,6 +39,7 @@ interface TaskWithSpecialist extends Task {
 const TaskDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const [task, setTask] = useState<TaskWithSpecialist | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,9 +53,9 @@ const TaskDetailPage = () => {
     setError(null);
     try {
       const { data } = await api.get<TaskWithSpecialist[]>('/api/tasks');
-      const match = data.find((t) => t.id === id) ?? null;
+      const match = data.find((x) => x.id === id) ?? null;
       if (!match) {
-        setError('Task not found.');
+        setError(t('task.detail.notFound'));
         setTask(null);
       } else {
         setTask(match);
@@ -54,12 +63,12 @@ const TaskDetailPage = () => {
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Could not load task.';
+        t('task.detail.loadError');
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     fetchTask();
@@ -77,98 +86,97 @@ const TaskDetailPage = () => {
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Could not update status.';
+        t('task.detail.updateError');
       setUpdateError(message);
     } finally {
       setUpdating(false);
     }
   };
 
+  const isPool = Boolean(task && task.status === 'pending' && !task.specialist_id);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
+    <ManagerLayout>
+      <div className="flex-1 px-4 pb-10 pt-6 sm:px-8 md:py-10">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/manager/dashboard')}
-            className="text-sm rounded-lg px-3 py-1.5 border border-gray-300 hover:bg-gray-100 transition"
+            className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
-            ← Back
+            ← {t('task.detail.back')}
           </button>
-          <h1 className="text-lg font-semibold text-gray-900">Task Detail</h1>
+          <h1 className="text-xl font-semibold text-slate-900 md:text-2xl">{t('task.detail.title')}</h1>
         </div>
-      </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
-        {loading && <p className="text-gray-500">Loading task...</p>}
+        {loading && <p className="text-slate-500">{t('task.detail.loading')}</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {task && (
-          <article className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
-            <div className="flex items-start justify-between gap-4">
+          <article className="space-y-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-card sm:p-8">
+            <h2 className="text-2xl font-semibold text-slate-900">
+              {task.title?.trim() || t('task.detail.noTitle')}
+            </h2>
+
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Status</p>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {t('task.detail.statusLabel')}
+                </p>
                 <span
-                  className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_STYLES[task.status]}`}
+                  className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLES[task.status]}`}
                 >
-                  {task.status}
+                  {t(`task.status.${task.status}`)}
                 </span>
               </div>
               <div className="text-right">
-                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-                  Specialist
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {t('task.detail.specialistLabel')}
                 </p>
-                <p className="text-sm text-gray-900">
+                <p className="text-sm text-slate-900">
                   {task.specialist_name ?? task.specialist_id ?? (
-                    <span className="text-gray-400 italic">Unassigned</span>
+                    <span className="italic text-slate-400">{t('task.detail.specialistNone')}</span>
                   )}
                 </p>
               </div>
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-                Original instruction
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('task.detail.description')}
               </p>
-              <p className="text-gray-900 whitespace-pre-wrap">{task.instruction_original}</p>
+              <p className="whitespace-pre-wrap text-slate-900">{task.instruction_original}</p>
             </div>
 
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-                Translated instruction
-              </p>
-              <p className="text-gray-900 whitespace-pre-wrap">
-                {task.instruction_translated || (
-                  <span className="text-gray-400 italic">Pending translation</span>
-                )}
-              </p>
-            </div>
-
-            <div className="border-t border-gray-200 pt-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">
-                Conversation
+            <div className="border-t border-slate-100 pt-6">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('task.detail.conversation')}
               </p>
               <button
                 type="button"
                 onClick={() => navigate(`/manager/tasks/${task.id}/chat`)}
                 disabled={!task.specialist_id}
-                className="w-full sm:w-auto min-h-[2.75rem] rounded-xl bg-indigo-600 text-white font-semibold px-5 py-2.5 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                className="w-full min-h-[2.75rem] rounded-xl bg-geartalk-accent px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
               >
-                Open chat with specialist
+                {t('task.detail.openChat')}
               </button>
               {!task.specialist_id && (
-                <p className="mt-2 text-xs text-gray-500">Assign a specialist to exchange messages.</p>
+                <p className="mt-2 text-xs text-slate-500">{t('task.detail.chatDisabled')}</p>
               )}
             </div>
 
-            <div className="border-t border-gray-200 pt-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">
-                Update status
+            <div className="border-t border-slate-100 pt-6">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('task.detail.updateStatus')}
               </p>
 
-              {nextStates.length === 0 ? (
-                <p className="text-sm text-gray-500">No further status changes available.</p>
-              ) : (
+              {isPool && <p className="text-sm text-slate-500">{t('task.detail.poolNote')}</p>}
+
+              {!isPool && nextStates.length === 0 && (
+                <p className="text-sm text-slate-500">{t('task.detail.noMoreStates')}</p>
+              )}
+
+              {!isPool && nextStates.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {nextStates.map((status) => (
                     <button
@@ -176,9 +184,9 @@ const TaskDetailPage = () => {
                       type="button"
                       disabled={updating}
                       onClick={() => handleStatusChange(status)}
-                      className={`rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-60 disabled:cursor-not-allowed ${STATUS_BUTTON_STYLES[status]}`}
+                      className={`rounded-xl px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${STATUS_BUTTON_STYLES[status]}`}
                     >
-                      {updating ? 'Updating...' : `Mark as ${status}`}
+                      {updating ? t('task.detail.saving') : transitionLabel(status, t)}
                     </button>
                   ))}
                 </div>
@@ -188,8 +196,8 @@ const TaskDetailPage = () => {
             </div>
           </article>
         )}
-      </main>
-    </div>
+      </div>
+    </ManagerLayout>
   );
 };
 

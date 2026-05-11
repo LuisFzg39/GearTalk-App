@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { Pool } from 'pg';
+import { Pool, PoolConfig } from 'pg';
 
 dotenv.config();
 
@@ -22,6 +22,14 @@ export const JWT_SECRET = process.env.JWT_SECRET as string;
 export const DEEPL_API_KEY = process.env.DEEPL_API_KEY as string;
 export const CLIENT_URL = process.env.CLIENT_URL as string;
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+function createPoolConfig(): PoolConfig {
+  const connectionString = process.env.DATABASE_URL as string;
+  const needsSsl =
+    /supabase\.co/i.test(connectionString) || /sslmode=require/i.test(connectionString);
+  return {
+    connectionString,
+    ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+  };
+}
+
+export const pool = new Pool(createPoolConfig());

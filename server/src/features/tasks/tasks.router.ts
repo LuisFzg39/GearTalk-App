@@ -8,6 +8,8 @@ router.use(authMiddleware);
 
 router.post('/', tasksController.createTask);
 router.get('/', tasksController.getMyTasks);
+router.get('/specialists/overview', tasksController.getSpecialistOverview);
+router.post('/:id/accept', tasksController.acceptTask);
 router.patch('/:id/status', tasksController.updateStatus);
 
 export default router;

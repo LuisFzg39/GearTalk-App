@@ -48,4 +48,31 @@ export const translate = async (
   }
 };
 
-export const translationController = { translate };
+export const bundleUi = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const raw = req.body?.target_lang;
+    let targetLang: string | undefined;
+
+    if (typeof raw === 'string' && raw.trim()) {
+      targetLang = translationService.normalizeLangCode(raw);
+    } else if (req.user) {
+      targetLang = await translationService.getPreferredLanguage(req.user.id);
+    }
+
+    if (!targetLang) {
+      res.status(400).json({ message: 'target_lang is required when not signed in' });
+      return;
+    }
+
+    const strings = await translationService.translateUiBundle(targetLang);
+    res.status(200).json({ target_lang: targetLang, strings });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const translationController = { translate, bundleUi };

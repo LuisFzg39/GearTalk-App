@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "ts-node-dev src/app.ts",
+    "dev": "ts-node-dev --tree-kill src/app.ts",
     "build": "tsc"
   },
   "dependencies": {
