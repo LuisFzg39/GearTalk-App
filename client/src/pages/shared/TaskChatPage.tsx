@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../providers/AxiosProvider';
 import { ManagerLayout } from '../../components/manager/ManagerLayout';
 import { useI18n } from '../../providers/I18nProvider';
+import { supabase } from '../../lib/supabase';
 
 const messagesPath = (taskId: string) => `/api/messages/tasks/${taskId}/messages`;
 
@@ -62,9 +63,28 @@ const TaskChatPage = () => {
     }
   }, [taskId, t]);
 
+  const subscribeToMessages = useCallback(() => {
+    if (!taskId) return () => {};
+    const channel = supabase.channel(`messages:${taskId}`);
+    channel
+      .on('broadcast', { event: 'new-message' }, (payload) => {
+        const incoming = payload.payload as Message;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === incoming.id)) return prev;
+          return [...prev, incoming];
+        });
+      })
+      .subscribe();
+    return () => channel.unsubscribe();
+  }, [taskId]);
+
   useEffect(() => {
     loadMessages();
-  }, [loadMessages]);
+    const unsubscribe = subscribeToMessages();
+    return () => {
+      unsubscribe();
+    };
+  }, [loadMessages, subscribeToMessages]);
 
   useEffect(() => {
     if (!taskId || user?.role !== 'specialist') return;
@@ -102,7 +122,6 @@ const TaskChatPage = () => {
         original_text: draft.trim(),
       });
       setDraft('');
-      setMessages((prev) => [...prev, data]);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??

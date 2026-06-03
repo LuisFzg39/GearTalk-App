@@ -3,7 +3,14 @@ import { Pool, PoolConfig } from 'pg';
 
 dotenv.config();
 
-const requiredEnv = ['DATABASE_URL', 'JWT_SECRET', 'DEEPL_API_KEY', 'CLIENT_URL'] as const;
+const requiredEnv = [
+  'DATABASE_URL',
+  'JWT_SECRET',
+  'DEEPL_API_KEY',
+  'CLIENT_URL',
+  'SUPABASE_URL',
+  'SUPABASE_ANON_KEY',
+] as const;
 
 export const missingEnv = requiredEnv.filter((key) => !process.env[key]);
 
@@ -20,6 +27,8 @@ if (Number.isNaN(PORT)) {
 export const JWT_SECRET = process.env.JWT_SECRET ?? '';
 export const DEEPL_API_KEY = process.env.DEEPL_API_KEY ?? '';
 export const CLIENT_URL = process.env.CLIENT_URL ?? '';
+export const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
+export const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? '';
 
 function createPoolConfig(connectionString: string): PoolConfig {
   const needsSsl =

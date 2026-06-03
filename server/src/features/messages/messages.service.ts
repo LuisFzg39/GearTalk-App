@@ -1,4 +1,5 @@
 import { pool } from '../../config';
+import { supabase } from '../../config/supabase';
 import * as translationService from '../translation/translation.service';
 import { MessageRecord } from './messages.types';
 
@@ -71,6 +72,12 @@ export const listByTask = async (
   return result.rows.map(toRecord);
 };
 
+const broadcastMessage = async (taskId: string, message: MessageRecord): Promise<void> => {
+  const channel = supabase.channel(`messages:${taskId}`);
+  await channel.httpSend('new-message', message);
+  supabase.removeChannel(channel);
+};
+
 export const sendForTask = async (
   taskId: string,
   senderId: string,
@@ -121,7 +128,9 @@ export const sendForTask = async (
     [taskId, senderId, trimmed, translatedForRecipient]
   );
 
-  return toRecord(result.rows[0]);
+  const record = toRecord(result.rows[0]);
+  await broadcastMessage(taskId, record);
+  return record;
 };
 
 export const messagesService = {
