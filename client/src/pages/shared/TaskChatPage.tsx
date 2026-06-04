@@ -9,6 +9,12 @@ import { supabase } from '../../lib/supabase';
 
 const messagesPath = (taskId: string) => `/api/messages/tasks/${taskId}/messages`;
 
+const TASK_STATUS_STYLES: Record<Task['status'], string> = {
+  pending: 'bg-amber-100 text-amber-900',
+  active: 'bg-green-100 text-green-800',
+  done: 'bg-blue-100 text-blue-900',
+};
+
 const formatTime = (iso: string): string => {
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -103,6 +109,22 @@ const TaskChatPage = () => {
 
     return () => {
       cancelled = true;
+    };
+  }, [taskId, user?.role]);
+
+  useEffect(() => {
+    if (!taskId || user?.role !== 'specialist') return;
+    const channel = supabase.channel(`task:${taskId}`);
+    channel
+      .on('broadcast', { event: 'task-updated' }, (payload) => {
+        const updated = payload.payload as Task;
+        setTask((prev) =>
+          prev && prev.id === updated.id ? { ...prev, status: updated.status } : prev
+        );
+      })
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
     };
   }, [taskId, user?.role]);
 
@@ -284,7 +306,9 @@ const TaskChatPage = () => {
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t('task.info.status')}
               </p>
-              <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${TASK_STATUS_STYLES[task.status]}`}
+              >
                 {t(`task.status.${task.status}`)}
               </span>
             </div>
