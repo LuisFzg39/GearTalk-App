@@ -71,7 +71,9 @@ const MyTasksPage = () => {
           .on('broadcast', { event: 'task-updated' }, (payload) => {
             const updated = payload.payload as Task;
             setTasks((prev) =>
-              prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
+              prev.map((item) =>
+                item.id === updated.id ? { ...item, status: updated.status } : item
+              )
             );
           })
           .subscribe();

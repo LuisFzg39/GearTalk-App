@@ -5,10 +5,13 @@ import { api } from '../../providers/AxiosProvider';
 import { EmptyState } from '../../components/shared/EmptyState';
 import { ManagerLayout } from '../../components/manager/ManagerLayout';
 import { useI18n } from '../../providers/I18nProvider';
+import { useAuth } from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabase';
 
 const ManagerMessagesPage = () => {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,14 +33,66 @@ const ManagerMessagesPage = () => {
     }
   }, [t]);
 
+  const subscribeToManagerTasks = useCallback(() => {
+    if (!user?.id) return () => {};
+    const channel = supabase.channel(`tasks:manager:${user.id}`);
+    channel
+      .on('broadcast', { event: 'task-accepted' }, () => {
+        fetchTasks();
+      })
+      .subscribe();
+    return () => channel.unsubscribe();
+  }, [user?.id, fetchTasks]);
+
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+    const unsubscribeManager = subscribeToManagerTasks();
+    return () => {
+      unsubscribeManager();
+    };
+  }, [fetchTasks, subscribeToManagerTasks]);
 
   const conversations = useMemo(
     () => tasks.filter((task) => Boolean(task.specialist_id)),
     [tasks]
   );
+
+  const conversationIds = useMemo(
+    () =>
+      conversations
+        .map((task) => task.id)
+        .sort()
+        .join(','),
+    [conversations]
+  );
+
+  useEffect(() => {
+    if (!conversationIds) return;
+    const channels = conversationIds.split(',').map((taskId) => {
+      const channel = supabase.channel(`task:${taskId}`);
+      channel
+        .on('broadcast', { event: 'task-updated' }, (payload) => {
+          const updated = payload.payload as Task;
+          setTasks((prev) =>
+            prev.map((item) =>
+              item.id === updated.id
+                ? {
+                    ...item,
+                    status: updated.status,
+                    specialist_id: updated.specialist_id ?? item.specialist_id,
+                    specialist_name: updated.specialist_name ?? item.specialist_name,
+                  }
+                : item
+            )
+          );
+        })
+        .subscribe();
+      return channel;
+    });
+    return () => {
+      channels.forEach((ch) => ch.unsubscribe());
+    };
+  }, [conversationIds]);
 
   const statusLabel = useCallback((status: Task['status']) => t(`task.status.${status}`), [t]);
 
