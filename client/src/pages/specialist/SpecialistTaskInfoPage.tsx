@@ -4,11 +4,14 @@ import { Task } from '../../types';
 import { api } from '../../providers/AxiosProvider';
 import { BrandLogo } from '../../components/shared/BrandLogo';
 import { useI18n } from '../../providers/I18nProvider';
+import { useAuth } from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabase';
 
 const SpecialistTaskInfoPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { user } = useAuth();
 
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,9 +39,29 @@ const SpecialistTaskInfoPage = () => {
     }
   }, [id, t]);
 
+  const subscribeToPool = useCallback(() => {
+    if (!user?.id || !id) return () => {};
+    const channel = supabase.channel('tasks:pool');
+    channel
+      .on('broadcast', { event: 'task-accepted' }, (payload) => {
+        const { id: claimedId } = payload.payload as { id: string };
+        if (claimedId !== id) return;
+        void fetchTask();
+      })
+      .subscribe();
+    return () => channel.unsubscribe();
+  }, [user?.id, id, fetchTask]);
+
   useEffect(() => {
     fetchTask();
-  }, [fetchTask]);
+  }, [id]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToPool();
+    return () => {
+      unsubscribe();
+    };
+  }, [subscribeToPool]);
 
   const handleAccept = async () => {
     if (!task) return;
