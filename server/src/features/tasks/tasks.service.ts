@@ -276,7 +276,9 @@ export const updateTaskStatus = async (
     [status, taskId]
   );
 
-  return result.rows[0].task;
+  const task = result.rows[0].task;
+  await broadcastTaskUpdated(taskId, task);
+  return task;
 };
 
 export const tasksService = {
