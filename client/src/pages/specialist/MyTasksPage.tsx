@@ -7,6 +7,7 @@ import { TaskItem } from '../../components/specialist/TaskItem';
 import { EmptyState } from '../../components/shared/EmptyState';
 import { BrandLogo } from '../../components/shared/BrandLogo';
 import { useI18n } from '../../providers/I18nProvider';
+import { supabase } from '../../lib/supabase';
 
 const MyTasksPage = () => {
   const { user, logout } = useAuth();
@@ -34,9 +35,26 @@ const MyTasksPage = () => {
     }
   }, [t]);
 
+  const subscribeToPool = useCallback(() => {
+    if (!user?.id) return () => {};
+    const channel = supabase.channel('tasks:pool');
+    channel
+      .on('broadcast', { event: 'task-created' }, () => {
+        fetchTasks();
+      })
+      .on('broadcast', { event: 'task-accepted' }, (payload) => {
+        const { id: claimedId } = payload.payload as { id: string };
+        setTasks((prev) => prev.filter((t) => t.id !== claimedId));
+      })
+      .subscribe();
+    return () => channel.unsubscribe();
+  }, [user?.id, fetchTasks]);
+
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+    const unsubscribe = subscribeToPool();
+    return () => { unsubscribe(); };
+  }, [fetchTasks, subscribeToPool]);
 
   const { availableTasks, myTasks } = useMemo(() => {
     const available = tasks.filter((x) => x.status === 'pending' && !x.specialist_id);
