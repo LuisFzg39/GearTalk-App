@@ -71,23 +71,31 @@ const TaskDetailPage = () => {
     }
   }, [id, t]);
 
-  const subscribeToTask = useCallback(() => {
-    if (!id) return () => {};
+  useEffect(() => {
+    fetchTask();
+    
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
     const channel = supabase.channel(`task:${id}`);
     channel
       .on('broadcast', { event: 'task-updated' }, (payload) => {
         const updated = payload.payload as TaskWithSpecialist;
-        setTask((prev) => (prev ? { ...prev, ...updated } : updated));
+        setTask((prev) =>
+          prev
+            ? {
+                ...updated,
+                specialist_name: updated.specialist_name ?? prev.specialist_name,
+              }
+            : updated
+        );
       })
       .subscribe();
-    return () => channel.unsubscribe();
+    return () => {
+      channel.unsubscribe();
+    };
   }, [id]);
-
-  useEffect(() => {
-    fetchTask();
-    const unsubscribe = subscribeToTask();
-    return () => { unsubscribe(); };
-  }, [fetchTask, subscribeToTask]);
 
   const nextStates = useMemo(() => (task ? NEXT_STATES[task.status] : []), [task]);
 

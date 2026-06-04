@@ -19,17 +19,19 @@ const MyTasksPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (): Promise<Task[]> => {
     setLoading(true);
     setError(null);
     try {
       const { data } = await api.get<Task[]>('/api/tasks');
       setTasks(data);
+      return data;
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         t('specialist.loadError');
       setError(message);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -39,22 +41,73 @@ const MyTasksPage = () => {
     if (!user?.id) return () => {};
     const channel = supabase.channel('tasks:pool');
     channel
-      .on('broadcast', { event: 'task-created' }, () => {
-        fetchTasks();
+      .on('broadcast', { event: 'task-created' }, (payload) => {
+        const data = payload.payload as Task;
+        let skip = false;
+        setTasks((prev) => {
+          if (prev.some((x) => x.id === data.id)) {
+            skip = true;
+            return prev;
+          }
+          return prev;
+        });
+        if (!skip) void fetchTasks();
       })
       .on('broadcast', { event: 'task-accepted' }, (payload) => {
         const { id: claimedId } = payload.payload as { id: string };
-        setTasks((prev) => prev.filter((t) => t.id !== claimedId));
+        setTasks((prev) => prev.filter((task) => task.id !== claimedId));
       })
       .subscribe();
     return () => channel.unsubscribe();
   }, [user?.id, fetchTasks]);
 
+  const subscribeToTaskUpdates = useCallback(
+    (taskList: Task[]) => {
+      if (!user?.id) return () => {};
+      const assigned = taskList.filter((task) => task.specialist_id === user.id);
+      const channels = assigned.map((task) => {
+        const channel = supabase.channel(`task:${task.id}`);
+        channel
+          .on('broadcast', { event: 'task-updated' }, (payload) => {
+            const updated = payload.payload as Task;
+            setTasks((prev) =>
+              prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
+            );
+          })
+          .subscribe();
+        return channel;
+      });
+      return () => channels.forEach((ch) => ch.unsubscribe());
+    },
+    [user?.id]
+  );
+
   useEffect(() => {
-    fetchTasks();
-    const unsubscribe = subscribeToPool();
-    return () => { unsubscribe(); };
+    void fetchTasks();
+    const unsubscribePool = subscribeToPool();
+    return () => {
+      unsubscribePool();
+    };
   }, [fetchTasks, subscribeToPool]);
+
+  const myTaskIds = useMemo(
+    () =>
+      tasks
+        .filter((task) => task.specialist_id === user?.id)
+        .map((task) => task.id)
+        .sort()
+        .join(','),
+    [tasks, user?.id]
+  );
+
+  useEffect(() => {
+    if (!myTaskIds) return;
+    const assigned = tasks.filter((task) => task.specialist_id === user?.id);
+    const unsubscribe = subscribeToTaskUpdates(assigned);
+    return () => {
+      unsubscribe();
+    };
+  }, [myTaskIds, tasks, user?.id, subscribeToTaskUpdates]);
 
   const { availableTasks, myTasks } = useMemo(() => {
     const available = tasks.filter((x) => x.status === 'pending' && !x.specialist_id);

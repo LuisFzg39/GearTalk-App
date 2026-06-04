@@ -266,12 +266,24 @@ export const updateTaskStatus = async (
     throw error;
   }
 
-  const result = await pool.query<{ task: Task }>(
-    `UPDATE tasks
+  const result = await pool.query<{ task: TaskWithUsers }>(
+    `UPDATE tasks t
      SET status = $1, updated_at = NOW()
-     WHERE id = $2
+     FROM users m
+     LEFT JOIN users s ON s.id = t.specialist_id
+     WHERE t.id = $2 AND m.id = t.manager_id
      RETURNING json_build_object(
-       ${taskJsonSelect}
+       'id', t.id,
+       'title', t.title,
+       'instruction_original', t.instruction_original,
+       'instruction_translated', t.instruction_translated,
+       'status', CASE WHEN t.status IN ('accepted', 'alert') THEN 'active' ELSE t.status END,
+       'manager_id', t.manager_id,
+       'specialist_id', t.specialist_id,
+       'created_at', t.created_at,
+       'manager_name', m.name,
+       'specialist_name', s.name,
+       'specialist_language', s.preferred_language
      ) AS task`,
     [status, taskId]
   );
