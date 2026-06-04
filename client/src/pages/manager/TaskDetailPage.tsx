@@ -4,6 +4,7 @@ import { Task } from '../../types';
 import { api } from '../../providers/AxiosProvider';
 import { ManagerLayout } from '../../components/manager/ManagerLayout';
 import { useI18n } from '../../providers/I18nProvider';
+import { supabase } from '../../lib/supabase';
 
 const STATUS_STYLES: Record<Task['status'], string> = {
   pending: 'bg-amber-100 text-amber-900',
@@ -70,9 +71,23 @@ const TaskDetailPage = () => {
     }
   }, [id, t]);
 
+  const subscribeToTask = useCallback(() => {
+    if (!id) return () => {};
+    const channel = supabase.channel(`task:${id}`);
+    channel
+      .on('broadcast', { event: 'task-updated' }, (payload) => {
+        const updated = payload.payload as TaskWithSpecialist;
+        setTask((prev) => (prev ? { ...prev, ...updated } : updated));
+      })
+      .subscribe();
+    return () => channel.unsubscribe();
+  }, [id]);
+
   useEffect(() => {
     fetchTask();
-  }, [fetchTask]);
+    const unsubscribe = subscribeToTask();
+    return () => { unsubscribe(); };
+  }, [fetchTask, subscribeToTask]);
 
   const nextStates = useMemo(() => (task ? NEXT_STATES[task.status] : []), [task]);
 
