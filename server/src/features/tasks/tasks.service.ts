@@ -1,4 +1,5 @@
 import { pool } from '../../config';
+import { supabase } from '../../config/supabase';
 import {
   CreateTaskRequest,
   ManagerSpecialistOverview,
@@ -17,6 +18,24 @@ const taskJsonSelect = `
        'manager_id', manager_id,
        'specialist_id', specialist_id,
        'created_at', created_at`;
+
+const broadcastToPool = async (event: string, payload: unknown): Promise<void> => {
+  const channel = supabase.channel('tasks:pool');
+  await channel.httpSend(event, payload);
+  supabase.removeChannel(channel);
+};
+
+const broadcastToManager = async (managerId: string, event: string, payload: unknown): Promise<void> => {
+  const channel = supabase.channel(`tasks:manager:${managerId}`);
+  await channel.httpSend(event, payload);
+  supabase.removeChannel(channel);
+};
+
+const broadcastTaskUpdated = async (taskId: string, payload: unknown): Promise<void> => {
+  const channel = supabase.channel(`task:${taskId}`);
+  await channel.httpSend('task-updated', payload);
+  supabase.removeChannel(channel);
+};
 
 export const createTask = async (data: CreateTaskRequest, managerId: string): Promise<Task> => {
   const { title, instruction_original } = data;
