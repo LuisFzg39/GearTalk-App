@@ -56,7 +56,10 @@ export const createTask = async (data: CreateTaskRequest, managerId: string): Pr
     [title.trim(), instruction_original.trim(), managerId]
   );
 
-  return result.rows[0].task;
+  const task = result.rows[0].task;
+  await broadcastToPool('task-created', task);
+  await broadcastToManager(managerId, 'task-created', task);
+  return task;
 };
 
 export const acceptTask = async (taskId: string, specialistId: string): Promise<Task> => {
