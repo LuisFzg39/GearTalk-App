@@ -6,6 +6,8 @@ import { EmptyState } from '../../components/shared/EmptyState';
 import { ManagerLayout } from '../../components/manager/ManagerLayout';
 import { formatLanguageDisplay } from '../../utils/language';
 import { useI18n } from '../../providers/I18nProvider';
+import { useAuth } from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabase';
 
 const STATUS_DOT: Record<ManagerSpecialistOverview['status'], string> = {
   active: 'bg-emerald-500',
@@ -33,6 +35,8 @@ const DashboardPage = () => {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const { user } = useAuth();
+
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -53,9 +57,25 @@ const DashboardPage = () => {
     }
   }, [t]);
 
+  const subscribeToTaskUpdates = useCallback(() => {
+    if (!user?.id) return () => {};
+    const channel = supabase.channel(`tasks:manager:${user.id}`);
+    channel
+      .on('broadcast', { event: 'task-created' }, () => {
+        fetchTasks();
+      })
+      .on('broadcast', { event: 'task-accepted' }, () => {
+        fetchTasks();
+      })
+      .subscribe();
+    return () => channel.unsubscribe();
+  }, [user?.id, fetchTasks]);
+
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+    const unsubscribe = subscribeToTaskUpdates();
+    return () => { unsubscribe(); };
+  }, [fetchTasks, subscribeToTaskUpdates]);
 
   const unassigned = useMemo(() => tasks.filter((task) => !task.specialist_id), [tasks]);
 
