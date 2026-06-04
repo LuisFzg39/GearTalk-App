@@ -118,7 +118,10 @@ export const acceptTask = async (taskId: string, specialistId: string): Promise<
 
     await client.query('COMMIT');
 
-    return updated.rows[0].task;
+    const task = updated.rows[0].task;
+    await broadcastToPool('task-accepted', { id: taskId });
+    await broadcastToManager(task.manager_id, 'task-accepted', task);
+    return task;
   } catch (e) {
     await client.query('ROLLBACK');
     throw e;
