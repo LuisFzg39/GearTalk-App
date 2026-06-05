@@ -41,12 +41,20 @@ const TaskDetailPage = () => {
   const navigate = useNavigate();
   const { t } = useI18n();
 
-  const { tasks, loading, error, updateTaskStatus: updateStatus, subscribeToTaskUpdates } =
-    useTasks();
+  const {
+    tasks,
+    loading,
+    error,
+    updateTaskStatus: updateStatus,
+    subscribeToTaskUpdates,
+    deleteTask,
+  } = useTasks();
   const task = (tasks.find((t) => t.id === id) as TaskWithSpecialist | undefined) ?? null;
 
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const displayError =
     error ?? (!loading && id && !task ? t('task.detail.notFound') : null);
@@ -74,6 +82,23 @@ const TaskDetailPage = () => {
       setUpdateError(message);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!task) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteTask(task.id);
+      navigate('/manager/dashboard');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        t('task.detail.deleteError');
+      setDeleteError(message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -178,6 +203,23 @@ const TaskDetailPage = () => {
 
               {updateError && <p className="mt-2 text-sm text-red-600">{updateError}</p>}
             </div>
+
+            {task.status === 'done' && (
+              <div className="border-t border-slate-100 pt-6">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {t('task.detail.dangerZone')}
+                </p>
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={handleDelete}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deleting ? t('task.detail.deleting') : t('task.detail.deleteTask')}
+                </button>
+                {deleteError && <p className="mt-2 text-sm text-red-600">{deleteError}</p>}
+              </div>
+            )}
           </article>
         )}
       </div>

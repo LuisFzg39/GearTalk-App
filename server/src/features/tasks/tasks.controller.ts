@@ -136,10 +136,30 @@ export const updateStatus = async (
   }
 };
 
+export const removeTask = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ message: 'Task id is required' });
+      return;
+    }
+    const user = requireUser(req);
+    await tasksService.deleteTask(id, user.id);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const tasksController = {
   createTask,
   getMyTasks,
   getSpecialistOverview,
   acceptTask,
   updateStatus,
+  removeTask,
 };

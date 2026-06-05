@@ -37,6 +37,19 @@ const broadcastTaskUpdated = async (taskId: string, payload: unknown): Promise<v
   supabase.removeChannel(channel);
 };
 
+const broadcastTaskDeleted = async (
+  managerId: string,
+  taskId: string
+): Promise<void> => {
+  const poolChannel = supabase.channel('tasks:pool');
+  await poolChannel.httpSend('task-deleted', { id: taskId });
+  supabase.removeChannel(poolChannel);
+
+  const managerChannel = supabase.channel(`tasks:manager:${managerId}`);
+  await managerChannel.httpSend('task-deleted', { id: taskId });
+  supabase.removeChannel(managerChannel);
+};
+
 export const createTask = async (data: CreateTaskRequest, managerId: string): Promise<Task> => {
   const { title, instruction_original } = data;
 
@@ -302,6 +315,32 @@ export const updateTaskStatus = async (
   return task;
 };
 
+export const deleteTask = async (
+  taskId: string,
+  requesterId: string
+): Promise<void> => {
+  const ownership = await pool.query<{ id: string; manager_id: string }>(
+    `SELECT id, manager_id
+     FROM tasks
+     WHERE id = $1 AND manager_id = $2 AND status = 'done'`,
+    [taskId, requesterId]
+  );
+
+  if (ownership.rowCount === 0) {
+    const error = new Error('Task not found, not authorized, or not done yet') as Error & { status?: number };
+    error.status = 404;
+    throw error;
+  }
+
+  await pool.query('DELETE FROM tasks WHERE id = $1', [taskId]);
+
+  try {
+    await broadcastTaskDeleted(requesterId, taskId);
+  } catch (e) {
+    console.error('broadcast task-deleted failed:', e);
+  }
+};
+
 export const tasksService = {
   createTask,
   acceptTask,
@@ -309,4 +348,5 @@ export const tasksService = {
   getSpecialistOverviewByManager,
   getTasksForSpecialist,
   updateTaskStatus,
+  deleteTask,
 };

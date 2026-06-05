@@ -54,6 +54,7 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'manager.messages.empty':
     'No conversations yet. When a specialist accepts a task, it appears here.',
   'manager.messages.openChat': 'Open chat',
+  'manager.messages.viewDetails': 'View Task',
   'manager.messages.specialist': 'Specialist',
   'manager.messages.noTitle': 'Untitled',
 
@@ -78,6 +79,10 @@ export const UI_STRINGS_EN: Record<string, string> = {
   'task.detail.transition.done': 'Mark as completed',
   'task.detail.transition.generic': 'Mark as',
   'task.detail.updateError': 'Could not update status.',
+  'task.detail.dangerZone': 'Danger Zone',
+  'task.detail.deleteTask': 'Delete Task',
+  'task.detail.deleting': 'Deleting...',
+  'task.detail.deleteError': 'Could not delete task',
 
   'specialist.loadError': 'Could not load tasks.',
   'specialist.intro':

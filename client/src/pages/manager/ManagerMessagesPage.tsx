@@ -136,6 +136,16 @@ const ManagerMessagesPage = () => {
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
                       {statusLabel(task.status)}
                     </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/manager/tasks/${task.id}`);
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    >
+                      {t('manager.messages.viewDetails')}
+                    </button>
                     <span className="rounded-xl bg-geartalk-accent px-4 py-2 text-sm font-semibold text-white shadow-sm">
                       {t('manager.messages.openChat')}
                     </span>

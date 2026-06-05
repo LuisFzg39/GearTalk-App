@@ -11,5 +11,6 @@ router.get('/', tasksController.getMyTasks);
 router.get('/specialists/overview', tasksController.getSpecialistOverview);
 router.post('/:id/accept', tasksController.acceptTask);
 router.patch('/:id/status', tasksController.updateStatus);
+router.delete('/:id', tasksController.removeTask);
 
 export default router;

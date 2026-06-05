@@ -12,6 +12,7 @@ export interface TasksContextValue {
   fetchTasks: (background?: boolean) => Promise<void>;
   acceptTask: (taskId: string) => Promise<void>;
   updateTaskStatus: (taskId: string, status: Task['status']) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
   subscribeToTaskUpdates: (taskId: string) => () => void;
 }
 
@@ -59,6 +60,11 @@ export const TasksProvider = ({ children }: { children: ReactNode }) => {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...data } : t)));
   }, []);
 
+  const deleteTask = useCallback(async (taskId: string) => {
+    await api.delete(`/api/tasks/${taskId}`);
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  }, []);
+
   const subscribeToPool = useCallback(() => {
     const channel = supabase.channel('tasks:pool');
     channel
@@ -74,6 +80,10 @@ export const TasksProvider = ({ children }: { children: ReactNode }) => {
         }
       })
       .on('broadcast', { event: 'task-accepted' }, (payload) => {
+        const { id } = payload.payload as { id: string };
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+      })
+      .on('broadcast', { event: 'task-deleted' }, (payload) => {
         const { id } = payload.payload as { id: string };
         setTasks((prev) => prev.filter((t) => t.id !== id));
       })
@@ -125,6 +135,7 @@ export const TasksProvider = ({ children }: { children: ReactNode }) => {
     fetchTasks,
     acceptTask,
     updateTaskStatus,
+    deleteTask,
     subscribeToTaskUpdates,
   };
 
