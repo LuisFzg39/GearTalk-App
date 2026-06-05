@@ -1,13 +1,12 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ManagerSpecialistOverview, Task } from '../../types';
+import { Task } from '../../types';
 import { api } from '../../providers/AxiosProvider';
 import { EmptyState } from '../../components/shared/EmptyState';
 import { ManagerLayout } from '../../components/manager/ManagerLayout';
 import { formatLanguageDisplay } from '../../utils/language';
 import { useI18n } from '../../providers/I18nProvider';
-import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../lib/supabase';
+import { useTasks } from '../../hooks/useTasks';
 
 const STATUS_DOT: Record<ManagerSpecialistOverview['status'], string> = {
   active: 'bg-emerald-500',
@@ -24,58 +23,13 @@ const DashboardPage = () => {
   const { t, lang: uiLang } = useI18n();
   const navigate = useNavigate();
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [specialists, setSpecialists] = useState<ManagerSpecialistOverview[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { tasks, specialists, loading, error, fetchTasks } = useTasks();
 
   const [formOpen, setFormOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [instruction, setInstruction] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-
-  const { user } = useAuth();
-
-  const fetchTasks = useCallback(async (background = false) => {
-    if (!background) setLoading(true);
-    setError(null);
-    try {
-      const { data } = await api.get<Task[]>('/api/tasks');
-      const { data: specialistData } = await api.get<ManagerSpecialistOverview[]>(
-        '/api/tasks/specialists/overview'
-      );
-      setTasks(data);
-      setSpecialists(specialistData);
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        t('manager.dashboard.loadError');
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  const subscribeToTaskUpdates = useCallback(() => {
-    if (!user?.id) return () => {};
-    const channel = supabase.channel(`tasks:manager:${user.id}`);
-    channel
-      .on('broadcast', { event: 'task-created' }, () => {
-        fetchTasks(true);
-      })
-      .on('broadcast', { event: 'task-accepted' }, () => {
-        fetchTasks(true);
-      })
-      .subscribe();
-    return () => channel.unsubscribe();
-  }, [user?.id, fetchTasks]);
-
-  useEffect(() => {
-    fetchTasks();
-    const unsubscribe = subscribeToTaskUpdates();
-    return () => { unsubscribe(); };
-  }, [fetchTasks, subscribeToTaskUpdates]);
 
   const unassigned = useMemo(() => tasks.filter((task) => !task.specialist_id), [tasks]);
 
@@ -91,7 +45,7 @@ const DashboardPage = () => {
       setTitle('');
       setInstruction('');
       setFormOpen(false);
-      await fetchTasks();
+      await fetchTasks(true);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??

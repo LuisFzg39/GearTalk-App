@@ -1,115 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Task } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
-import { api } from '../../providers/AxiosProvider';
 import { TaskItem } from '../../components/specialist/TaskItem';
 import { EmptyState } from '../../components/shared/EmptyState';
 import { BrandLogo } from '../../components/shared/BrandLogo';
 import { useI18n } from '../../providers/I18nProvider';
-import { supabase } from '../../lib/supabase';
+import { useTasks } from '../../hooks/useTasks';
 
 const MyTasksPage = () => {
   const { user, logout } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { tasks, loading, error, acceptTask: accept } = useTasks();
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
-
-  const fetchTasks = useCallback(async (): Promise<Task[]> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data } = await api.get<Task[]>('/api/tasks');
-      setTasks(data);
-      return data;
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        t('specialist.loadError');
-      setError(message);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  const subscribeToPool = useCallback(() => {
-    if (!user?.id) return () => {};
-    const channel = supabase.channel('tasks:pool');
-    channel
-      .on('broadcast', { event: 'task-created' }, (payload) => {
-        const data = payload.payload as Task;
-        let skip = false;
-        setTasks((prev) => {
-          if (prev.some((x) => x.id === data.id)) {
-            skip = true;
-            return prev;
-          }
-          return prev;
-        });
-        if (!skip) void fetchTasks();
-      })
-      .on('broadcast', { event: 'task-accepted' }, (payload) => {
-        const { id: claimedId } = payload.payload as { id: string };
-        setTasks((prev) => prev.filter((task) => task.id !== claimedId));
-      })
-      .subscribe();
-    return () => channel.unsubscribe();
-  }, [user?.id, fetchTasks]);
-
-  const subscribeToTaskUpdates = useCallback(
-    (taskList: Task[]) => {
-      if (!user?.id) return () => {};
-      const assigned = taskList.filter((task) => task.specialist_id === user.id);
-      const channels = assigned.map((task) => {
-        const channel = supabase.channel(`task:${task.id}`);
-        channel
-          .on('broadcast', { event: 'task-updated' }, (payload) => {
-            const updated = payload.payload as Task;
-            setTasks((prev) =>
-              prev.map((item) =>
-                item.id === updated.id ? { ...item, status: updated.status } : item
-              )
-            );
-          })
-          .subscribe();
-        return channel;
-      });
-      return () => channels.forEach((ch) => ch.unsubscribe());
-    },
-    [user?.id]
-  );
-
-  useEffect(() => {
-    void fetchTasks();
-    const unsubscribePool = subscribeToPool();
-    return () => {
-      unsubscribePool();
-    };
-  }, [fetchTasks, subscribeToPool]);
-
-  const myTaskIds = useMemo(
-    () =>
-      tasks
-        .filter((task) => task.specialist_id === user?.id)
-        .map((task) => task.id)
-        .sort()
-        .join(','),
-    [tasks, user?.id]
-  );
-
-  useEffect(() => {
-    if (!myTaskIds) return;
-    const assigned = tasks.filter((task) => task.specialist_id === user?.id);
-    const unsubscribe = subscribeToTaskUpdates(assigned);
-    return () => {
-      unsubscribe();
-    };
-  }, [myTaskIds, tasks, user?.id, subscribeToTaskUpdates]);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
 
   const { availableTasks, myTasks } = useMemo(() => {
     const available = tasks.filter((x) => x.status === 'pending' && !x.specialist_id);
@@ -119,15 +24,14 @@ const MyTasksPage = () => {
 
   const handleAccept = async (taskId: string) => {
     setAcceptingId(taskId);
-    setError(null);
+    setAcceptError(null);
     try {
-      await api.post<Task>(`/api/tasks/${taskId}/accept`);
-      await fetchTasks();
+      await accept(taskId);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         t('specialist.acceptError');
-      setError(message);
+      setAcceptError(message);
     } finally {
       setAcceptingId(null);
     }
@@ -163,6 +67,7 @@ const MyTasksPage = () => {
       <main className="mx-auto w-full max-w-lg flex-1 px-4 py-6 sm:px-5">
         {loading && <p className="text-slate-500">{t('specialist.loading')}</p>}
         {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+        {acceptError && <p className="mb-4 text-sm text-red-600">{acceptError}</p>}
 
         {!loading && availableTasks.length === 0 && myTasks.length === 0 && (
           <EmptyState message={t('specialist.empty')} />

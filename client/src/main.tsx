@@ -5,6 +5,7 @@ import App from './App';
 import { AxiosProvider } from './providers/AxiosProvider';
 import { AuthProvider } from './providers/AuthProvider';
 import { I18nProvider } from './providers/I18nProvider';
+import { TasksProvider } from './providers/TasksProvider';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -23,9 +24,11 @@ createRoot(rootElement).render(
     >
       <AxiosProvider>
         <AuthProvider>
-          <I18nProvider>
-            <App />
-          </I18nProvider>
+          <TasksProvider>
+            <I18nProvider>
+              <App />
+            </I18nProvider>
+          </TasksProvider>
         </AuthProvider>
       </AxiosProvider>
     </BrowserRouter>

@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Task } from '../../types';
-import { api } from '../../providers/AxiosProvider';
 import { ManagerLayout } from '../../components/manager/ManagerLayout';
 import { useI18n } from '../../providers/I18nProvider';
-import { supabase } from '../../lib/supabase';
+import { useTasks } from '../../hooks/useTasks';
 
 const STATUS_STYLES: Record<Task['status'], string> = {
   pending: 'bg-amber-100 text-amber-900',
@@ -42,60 +41,23 @@ const TaskDetailPage = () => {
   const navigate = useNavigate();
   const { t } = useI18n();
 
-  const [task, setTask] = useState<TaskWithSpecialist | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { tasks, loading, error, updateTaskStatus: updateStatus, subscribeToTaskUpdates } =
+    useTasks();
+  const task = (tasks.find((t) => t.id === id) as TaskWithSpecialist | undefined) ?? null;
+
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
-  const fetchTask = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const { data } = await api.get<TaskWithSpecialist[]>('/api/tasks');
-      const match = data.find((x) => x.id === id) ?? null;
-      if (!match) {
-        setError(t('task.detail.notFound'));
-        setTask(null);
-      } else {
-        setTask(match);
-      }
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        t('task.detail.loadError');
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [id, t]);
-
-  useEffect(() => {
-    fetchTask();
-    
-  }, [id]);
+  const displayError =
+    error ?? (!loading && id && !task ? t('task.detail.notFound') : null);
 
   useEffect(() => {
     if (!id) return;
-    const channel = supabase.channel(`task:${id}`);
-    channel
-      .on('broadcast', { event: 'task-updated' }, (payload) => {
-        const updated = payload.payload as TaskWithSpecialist;
-        setTask((prev) =>
-          prev
-            ? {
-                ...updated,
-                specialist_name: updated.specialist_name ?? prev.specialist_name,
-              }
-            : updated
-        );
-      })
-      .subscribe();
+    const unsubscribe = subscribeToTaskUpdates(id);
     return () => {
-      channel.unsubscribe();
+      unsubscribe();
     };
-  }, [id]);
+  }, [id, subscribeToTaskUpdates]);
 
   const nextStates = useMemo(() => (task ? NEXT_STATES[task.status] : []), [task]);
 
@@ -104,8 +66,7 @@ const TaskDetailPage = () => {
     setUpdating(true);
     setUpdateError(null);
     try {
-      const { data } = await api.patch<Task>(`/api/tasks/${task.id}/status`, { status });
-      setTask({ ...task, ...data });
+      await updateStatus(task.id, status);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -133,7 +94,7 @@ const TaskDetailPage = () => {
         </div>
 
         {loading && <p className="text-slate-500">{t('task.detail.loading')}</p>}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {displayError && <p className="text-sm text-red-600">{displayError}</p>}
 
         {task && (
           <article className="space-y-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-card sm:p-8">
