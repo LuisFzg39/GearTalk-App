@@ -37,8 +37,8 @@ const DashboardPage = () => {
 
   const { user } = useAuth();
 
-  const fetchTasks = useCallback(async () => {
-    setLoading(true);
+  const fetchTasks = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
     setError(null);
     try {
       const { data } = await api.get<Task[]>('/api/tasks');
@@ -62,10 +62,10 @@ const DashboardPage = () => {
     const channel = supabase.channel(`tasks:manager:${user.id}`);
     channel
       .on('broadcast', { event: 'task-created' }, () => {
-        fetchTasks();
+        fetchTasks(true);
       })
       .on('broadcast', { event: 'task-accepted' }, () => {
-        fetchTasks();
+        fetchTasks(true);
       })
       .subscribe();
     return () => channel.unsubscribe();

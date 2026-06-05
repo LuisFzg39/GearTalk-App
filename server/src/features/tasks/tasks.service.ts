@@ -57,8 +57,12 @@ export const createTask = async (data: CreateTaskRequest, managerId: string): Pr
   );
 
   const task = result.rows[0].task;
-  await broadcastToPool('task-created', task);
-  await broadcastToManager(managerId, 'task-created', task);
+  try {
+    await broadcastToPool('task-created', task);
+    await broadcastToManager(managerId, 'task-created', task);
+  } catch (e) {
+    console.error('broadcast task-created failed:', e);
+  }
   return task;
 };
 
@@ -119,8 +123,12 @@ export const acceptTask = async (taskId: string, specialistId: string): Promise<
     await client.query('COMMIT');
 
     const task = updated.rows[0].task;
-    await broadcastToPool('task-accepted', { id: taskId });
-    await broadcastToManager(task.manager_id, 'task-accepted', task);
+    try {
+      await broadcastToPool('task-accepted', { id: taskId });
+      await broadcastToManager(task.manager_id, 'task-accepted', task);
+    } catch (e) {
+      console.error('broadcast task-accepted failed:', e);
+    }
     return task;
   } catch (e) {
     await client.query('ROLLBACK');
@@ -267,29 +275,30 @@ export const updateTaskStatus = async (
   }
 
   const result = await pool.query<{ task: TaskWithUsers }>(
-    `UPDATE tasks t
+    `UPDATE tasks
      SET status = $1, updated_at = NOW()
-     FROM users m
-     LEFT JOIN users s ON s.id = t.specialist_id
-     WHERE t.id = $2 AND m.id = t.manager_id
+     WHERE id = $2
      RETURNING json_build_object(
-       'id', t.id,
-       'title', t.title,
-       'instruction_original', t.instruction_original,
-       'instruction_translated', t.instruction_translated,
-       'status', CASE WHEN t.status IN ('accepted', 'alert') THEN 'active' ELSE t.status END,
-       'manager_id', t.manager_id,
-       'specialist_id', t.specialist_id,
-       'created_at', t.created_at,
-       'manager_name', m.name,
-       'specialist_name', s.name,
-       'specialist_language', s.preferred_language
+       'id', id,
+       'title', title,
+       'instruction_original', instruction_original,
+       'instruction_translated', instruction_translated,
+       'status', $1,
+       'manager_id', manager_id,
+       'specialist_id', specialist_id,
+       'created_at', created_at
      ) AS task`,
     [status, taskId]
   );
 
   const task = result.rows[0].task;
-  await broadcastTaskUpdated(taskId, task);
+
+  try {
+    await broadcastTaskUpdated(taskId, task);
+  } catch (e) {
+    console.error('broadcast task-updated failed:', e);
+  }
+
   return task;
 };
 
