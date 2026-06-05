@@ -283,7 +283,7 @@ export const updateTaskStatus = async (
        'title', title,
        'instruction_original', instruction_original,
        'instruction_translated', instruction_translated,
-       'status', $1,
+       'status', status,
        'manager_id', manager_id,
        'specialist_id', specialist_id,
        'created_at', created_at
