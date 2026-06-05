@@ -59,15 +59,19 @@ export const TasksProvider = ({ children }: { children: ReactNode }) => {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...data } : t)));
   }, []);
 
-  const subscribeToPool = () => {
+  const subscribeToPool = useCallback(() => {
     const channel = supabase.channel('tasks:pool');
     channel
       .on('broadcast', { event: 'task-created' }, (payload) => {
-        const task = payload.payload as Task;
-        setTasks((prev) => {
-          if (prev.some((t) => t.id === task.id)) return prev;
-          return [task, ...prev];
-        });
+        if (user?.role === 'specialist') {
+          fetchTasks(true);
+        } else {
+          const task = payload.payload as Task;
+          setTasks((prev) => {
+            if (prev.some((t) => t.id === task.id)) return prev;
+            return [task, ...prev];
+          });
+        }
       })
       .on('broadcast', { event: 'task-accepted' }, (payload) => {
         const { id } = payload.payload as { id: string };
@@ -75,7 +79,7 @@ export const TasksProvider = ({ children }: { children: ReactNode }) => {
       })
       .subscribe();
     return () => channel.unsubscribe();
-  };
+  }, [user?.role, fetchTasks]);
 
   const subscribeToManagerChannel = () => {
     if (user?.role !== 'manager') return () => {};
